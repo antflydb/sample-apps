@@ -103,6 +103,28 @@ The app has no login. Run it on a private network or behind your own
 authentication: anyone who can reach it can search your files and read them
 through `/files`.
 
+## Google Cloud Storage
+
+Configure GCS through `SOURCES_FILE` (a JSON array), or `POST /api/sources`
+when demo mode is disabled. The add-source dialog currently offers S3 and
+Drive. GCS uses Application Default Credentials: attach a service account
+with `roles/storage.objectViewer` on the source bucket, or use local ADC
+for development. No service account key or HMAC credential belongs in the
+source configuration.
+
+```json
+[{"id":"documents","kind":"gcs","name":"Documents",
+  "gcs":{"bucket":"example-documents","prefix":"demo/"}}]
+```
+
+Only objects under the prefix are listed. GCS generation numbers detect
+changes. Objects must be stored without content encoding (for example,
+without `Content-Encoding: gzip`) so byte offsets and file sizes stay stable.
+Ranged downloads are pinned to the listed generation. Enable
+bucket versioning if earlier generations must remain readable while a sync
+is in progress. Antfly fetches GCS content through the app's `/files` route;
+it needs network access to `PUBLIC_URL`, not bucket credentials.
+
 ## Demo corpus
 
 The demo uses public-domain NASA photos, recordings, and technical reports.

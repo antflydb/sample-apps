@@ -1,7 +1,7 @@
 // Shapes from docs/API.md. Keep in sync with the Go server.
 
 export type FileKind = "image" | "audio" | "video" | "pdf" | "text";
-export type SourceKind = "s3" | "drive";
+export type SourceKind = "s3" | "gcs" | "drive";
 export type SourceStatus = "idle" | "syncing" | "error";
 
 export interface Config {
@@ -62,6 +62,11 @@ export interface SearchResponse {
 }
 
 export type NewSource =
+  | {
+      kind: "gcs";
+      name: string;
+      gcs: { bucket: string; prefix?: string };
+    }
   | {
       kind: "s3";
       name: string;

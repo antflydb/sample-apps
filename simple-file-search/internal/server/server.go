@@ -103,15 +103,19 @@ func (s *Server) listSources(w http.ResponseWriter, _ *http.Request) {
 		if c.Kind == "drive" {
 			location = "Google Drive folder"
 		}
+		if s.Demo {
+			location = map[string]string{"s3": "S3 bucket", "gcs": "Google Cloud Storage bucket", "drive": "Google Drive folder"}[c.Kind]
+		}
 		out = append(out, sourceView{ID: c.ID, Kind: c.Kind, Name: c.Name, Location: location, Status: s.Syncer.Status(c.ID)})
 	}
 	writeJSON(w, http.StatusOK, out)
 }
 
 type addRequest struct {
-	Kind  string            `json:"kind"`
-	Name  string            `json:"name"`
-	S3    *sources.S3Config `json:"s3"`
+	Kind  string             `json:"kind"`
+	Name  string             `json:"name"`
+	S3    *sources.S3Config  `json:"s3"`
+	GCS   *sources.GCSConfig `json:"gcs"`
 	Drive *struct {
 		Folder          string `json:"folder"`
 		CredentialsJSON string `json:"credentials_json"`
@@ -132,6 +136,12 @@ func (s *Server) addSource(w http.ResponseWriter, r *http.Request) {
 	}
 	cfg := sources.Config{ID: s.newID(req.Name), Kind: req.Kind, Name: req.Name, CreatedAt: time.Now().UTC()}
 	switch req.Kind {
+	case "gcs":
+		if req.GCS == nil {
+			writeError(w, http.StatusBadRequest, errors.New("gcs settings are required"))
+			return
+		}
+		cfg.GCS = req.GCS
 	case "s3":
 		if req.S3 == nil {
 			writeError(w, http.StatusBadRequest, errors.New("s3 settings are required"))
@@ -149,7 +159,7 @@ func (s *Server) addSource(w http.ResponseWriter, r *http.Request) {
 			APIKey:          strings.TrimSpace(req.Drive.APIKey),
 		}
 	default:
-		writeError(w, http.StatusBadRequest, fmt.Errorf("kind must be s3 or drive"))
+		writeError(w, http.StatusBadRequest, fmt.Errorf("kind must be s3, gcs, or drive"))
 		return
 	}
 	// Check the credentials before saving: list once.
@@ -341,6 +351,10 @@ func (s *Server) file(w http.ResponseWriter, r *http.Request) {
 	cfg, obj, ok := s.Lookup(r.PathValue("id"))
 	if !ok {
 		http.NotFound(w, r)
+		return
+	}
+	if version := r.URL.Query().Get("v"); version != "" && version != obj.Version {
+		http.Error(w, "file version changed; retry with the current file URL", http.StatusConflict)
 		return
 	}
 	src, err := s.source(r.Context(), cfg)

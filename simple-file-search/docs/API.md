@@ -58,6 +58,14 @@ added, removed, or synced from the UI.
              "credentials_json": "{...service account key...}" } }
 ```
 
+```json
+{ "kind": "gcs", "name": "Documents",
+  "gcs": { "bucket": "example-documents", "prefix": "demo/" } }
+```
+
+GCS uses the server's Application Default Credentials. In demo mode,
+source locations are provider labels rather than bucket names or prefixes.
+
 Returns the created source (shape as above). Errors: `400 {"error": "..."}`.
 
 ## DELETE /api/sources/{id} (not in demo mode)
