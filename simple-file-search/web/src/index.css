@@ -1,0 +1,52 @@
+@import "tailwindcss";
+@import "@antfly/design-system/tokens";
+@import "@antfly/design-system/theme";
+@import "@antfly/design-system/base.css";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/roboto-mono";
+
+@source "../node_modules/@antfly/design-system/dist";
+
+@custom-variant dark (&:is(.dark *));
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+  h1,
+  h2,
+  h3 {
+    /* Interface headings are Inter; Aeonik stays with the wordmark. */
+    font-family: var(--font-sans);
+    font-weight: 500;
+  }
+}
+
+@keyframes live {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@layer utilities {
+  .animate-live {
+    animation: live 1.6s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-live {
+      animation: none;
+    }
+  }
+}

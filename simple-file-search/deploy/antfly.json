@@ -1,0 +1,9 @@
+{
+  "public_inference": { "enabled": true },
+  "remote_content": {
+    "security": {
+      "allowed_hosts": ["127.0.0.1", "localhost", "app"],
+      "block_private_ips": false
+    }
+  }
+}

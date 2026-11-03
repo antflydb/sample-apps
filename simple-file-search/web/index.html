@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Search images, recordings, and documents from S3 and Google Drive with Antfly." />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Simple file search</title>
+    <script>
+      // Follow the system theme before first paint so dark mode never flashes.
+      (function () {
+        var m = window.matchMedia("(prefers-color-scheme: dark)");
+        function apply() { document.documentElement.classList.toggle("dark", m.matches); }
+        apply();
+        m.addEventListener("change", apply);
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

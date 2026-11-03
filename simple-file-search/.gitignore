@@ -1,0 +1,6 @@
+/data/
+/corpus/
+web/node_modules/
+web/dist/*
+!web/dist/.keep
+.DS_Store
