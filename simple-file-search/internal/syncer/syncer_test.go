@@ -64,6 +64,12 @@ func obj(key, mime, version string, size int64) sources.Object {
 }
 
 func TestSyncWritesChangesAndDeletesGoneFiles(t *testing.T) {
+	for _, kind := range []string{"s3", "gcs"} {
+		t.Run(kind, func(t *testing.T) { testSyncChanges(t, kind) })
+	}
+}
+
+func testSyncChanges(t *testing.T, kind string) {
 	fa := &fakeAntfly{}
 	fa.reset()
 	srv := httptest.NewServer(http.HandlerFunc(fa.handler))
@@ -73,7 +79,7 @@ func TestSyncWritesChangesAndDeletesGoneFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg := sources.Config{ID: "media", Kind: "s3", Name: "Media", S3: &sources.S3Config{Bucket: "b"}}
+	cfg := sources.Config{ID: "media", Kind: kind, Name: "Media", S3: &sources.S3Config{Bucket: "b"}, GCS: &sources.GCSConfig{Bucket: "b"}}
 	if err := store.AddSource(cfg); err != nil {
 		t.Fatal(err)
 	}

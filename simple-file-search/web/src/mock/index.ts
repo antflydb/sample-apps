@@ -92,6 +92,7 @@ export function installMock(demo: boolean) {
 
   const add = (body: NewSource): Response => {
     if (body.kind === "s3" && !body.s3?.bucket) return json({ error: "bucket is required" }, 400);
+    if (body.kind === "gcs" && !body.gcs?.bucket) return json({ error: "bucket is required" }, 400);
     if (body.kind === "drive") {
       if (!/drive\.google\.com\/.*folders\//.test(body.drive?.folder ?? ""))
         return json({ error: "folder must be a Google Drive folder URL" }, 400);
@@ -111,7 +112,9 @@ export function installMock(demo: boolean) {
       location:
         body.kind === "s3"
           ? `s3://${body.s3.bucket}/${body.s3.prefix}`
-          : "Google Drive folder",
+          : body.kind === "gcs"
+            ? `gs://${body.gcs.bucket}/${body.gcs.prefix ?? ""}`
+            : "Google Drive folder",
       status: "syncing",
       last_synced_at: null,
       error: "",

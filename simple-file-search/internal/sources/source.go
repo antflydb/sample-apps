@@ -39,9 +39,10 @@ type Source interface {
 // Config is a saved source. Secrets live here, on the app's disk, never in Antfly.
 type Config struct {
 	ID        string       `json:"id"`
-	Kind      string       `json:"kind"` // "s3" or "drive"
+	Kind      string       `json:"kind"` // "s3", "gcs", or "drive"
 	Name      string       `json:"name"`
 	S3        *S3Config    `json:"s3,omitempty"`
+	GCS       *GCSConfig   `json:"gcs,omitempty"`
 	Drive     *DriveConfig `json:"drive,omitempty"`
 	CreatedAt time.Time    `json:"created_at"`
 }
@@ -52,6 +53,8 @@ func (c Config) Location() string {
 		return "s3://" + path.Join(c.S3.Bucket, c.S3.Prefix) + "/"
 	case "drive":
 		return "https://drive.google.com/drive/folders/" + c.Drive.FolderID
+	case "gcs":
+		return "gs://" + c.GCS.Bucket + "/" + c.GCS.Prefix
 	}
 	return ""
 }
@@ -67,6 +70,11 @@ func (c Config) NativeURL(o Object) string {
 
 func Open(ctx context.Context, c Config) (Source, error) {
 	switch c.Kind {
+	case "gcs":
+		if c.GCS == nil {
+			return nil, fmt.Errorf("gcs source %q has no gcs settings", c.ID)
+		}
+		return NewGCS(ctx, *c.GCS)
 	case "s3":
 		if c.S3 == nil {
 			return nil, fmt.Errorf("s3 source %q has no s3 settings", c.ID)

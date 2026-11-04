@@ -16,11 +16,11 @@ export function kindWord(kind: FileKind, n = 1): string {
 }
 
 export function sourceKindLabel(kind: SourceKind): string {
-  return kind === "drive" ? "Google Drive" : "S3";
+  return { drive: "Google Drive", s3: "S3", gcs: "Google Cloud Storage" }[kind];
 }
 
 export function sourceKindShort(kind: SourceKind): string {
-  return kind === "drive" ? "Drive" : "S3";
+  return { drive: "Drive", s3: "S3", gcs: "GCS" }[kind];
 }
 
 export function count(n: number, one: string, many: string): string {
