@@ -92,6 +92,12 @@ vector, so the words refine it. With `like`, `image` is ignored, and the
 response also carries `like`: the starting file's `id`, `title`, `kind`, and
 `file_url`.
 
+When Antfly reports that the search model is starting, the endpoint returns
+HTTP 503, `{"code":"INFERENCE_STARTING","error":"Search is warming up."}`,
+and a `Retry-After` header in seconds. Resubmit the same search after that
+delay. The browser makes up to four retries with increasing delays while
+the search page is active. Each retry is a new search request.
+
 ```json
 { "text": "astronaut repairing a telescope",
   "image": "data:image/jpeg;base64,...",

@@ -2,8 +2,10 @@ package search
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 
 	"github.com/antflydb/sample-apps/simple-file-search/internal/antfly"
@@ -38,14 +40,45 @@ const grouped = `{"responses":[{"hits":{"hits":[
 ]}}]}`
 
 func TestSearchMapsGroupedHits(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Write([]byte(grouped))
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/ai/v1/embed":
+			var body struct {
+				Model string `json:"model"`
+				Task  string `json:"task_type"`
+				Input []struct {
+					Content []antfly.EmbedPart `json:"content"`
+				} `json:"input"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Model != "test-embedder" ||
+				body.Task != "RETRIEVAL_QUERY" || len(body.Input) != 1 ||
+				!reflect.DeepEqual(body.Input[0].Content, []antfly.EmbedPart{{Type: "text", Text: "telescope repair"}}) {
+				t.Errorf("unexpected embedding request: %+v (%v)", body, err)
+			}
+			w.Write([]byte(`{"data":[{"embedding":[0.25,0.75]}]}`))
+		case "/db/v1/query":
+			var body struct {
+				Embeddings map[string][]float64 `json:"embeddings"`
+				FullText   struct {
+					Query string `json:"query"`
+				} `json:"full_text_search"`
+			}
+			want := map[string][]float64{"chunks": {0.25, 0.75}, "media": {0.25, 0.75}}
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil ||
+				body.FullText.Query != "telescope repair" || !reflect.DeepEqual(body.Embeddings, want) {
+				t.Errorf("unexpected hybrid query: %+v (%v)", body, err)
+			}
+			w.Write([]byte(grouped))
+		default:
+			http.NotFound(w, r)
+		}
 	}))
 	defer srv.Close()
 	s := &Searcher{
-		Antfly:  antfly.New(srv.URL, ""),
-		Table:   "files",
-		FileURL: func(id, v string) string { return "/files/" + id + "?v=" + v },
+		Antfly:   antfly.New(srv.URL, ""),
+		Embedder: "test-embedder",
+		Table:    "files",
+		FileURL:  func(id, v string) string { return "/files/" + id + "?v=" + v },
 	}
 	resp, err := s.Search(context.Background(), Request{Text: "telescope repair"})
 	if err != nil {

@@ -116,6 +116,7 @@ func (s *Searcher) Search(ctx context.Context, r Request) (*Response, error) {
 
 	exclude := ""
 	var likeFile *LikeFile
+	var parts []antfly.EmbedPart
 	textQuery := r.Like == "" && r.Image == ""
 	switch {
 	case r.Like != "":
@@ -145,28 +146,32 @@ func (s *Searcher) Search(ctx context.Context, r Request) (*Response, error) {
 			if text == "" {
 				return &Response{TookMS: time.Since(start).Milliseconds(), Results: []Result{}, Like: likeFile}, nil
 			}
-			q["semantic_search"] = text
+			parts = []antfly.EmbedPart{{Type: "text", Text: text}}
 		}
-	case r.Image != "":
-		if !strings.HasPrefix(r.Image, "data:image/") {
-			return nil, fmt.Errorf("image must be a data:image/... URI")
-		}
-		// Text and image become one query vector, so the words refine the picture.
-		parts := []antfly.EmbedPart{}
+	case r.Image != "" || r.Text != "":
 		if r.Text != "" {
 			parts = append(parts, antfly.EmbedPart{Type: "text", Text: r.Text})
 		}
-		parts = append(parts, antfly.EmbedPart{Type: "image_url", ImageURL: map[string]string{"url": r.Image}})
+		if r.Image != "" {
+			if !strings.HasPrefix(r.Image, "data:image/") {
+				return nil, fmt.Errorf("image must be a data:image/... URI")
+			}
+			parts = append(parts, antfly.EmbedPart{Type: "image_url", ImageURL: map[string]string{"url": r.Image}})
+		} else {
+			q["full_text_search"] = map[string]any{"query": r.Text}
+		}
+	default:
+		return &Response{Results: []Result{}}, nil
+	}
+
+	if len(parts) != 0 {
+		// Embed once for both indexes so the caller can handle model startup
+		// before the database query. Text-only searches still include full text.
 		vec, err := s.Antfly.EmbedQuery(ctx, s.Embedder, parts)
 		if err != nil {
 			return nil, fmt.Errorf("embed query: %w", err)
 		}
 		q["embeddings"] = map[string]any{index.MediaIndex: vec, index.ChunksIndex: vec}
-	case r.Text != "":
-		q["semantic_search"] = r.Text
-		q["full_text_search"] = map[string]any{"query": r.Text}
-	default:
-		return &Response{Results: []Result{}}, nil
 	}
 
 	resp, err := s.Antfly.Query(ctx, q)

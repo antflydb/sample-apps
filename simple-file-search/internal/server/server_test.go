@@ -1,12 +1,17 @@
 package server
 
 import (
-	"github.com/antflydb/sample-apps/simple-file-search/internal/catalog"
-	"github.com/antflydb/sample-apps/simple-file-search/internal/sources"
-	"github.com/antflydb/sample-apps/simple-file-search/internal/syncer"
+	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/antflydb/sample-apps/simple-file-search/internal/antfly"
+	"github.com/antflydb/sample-apps/simple-file-search/internal/catalog"
+	"github.com/antflydb/sample-apps/simple-file-search/internal/search"
+	"github.com/antflydb/sample-apps/simple-file-search/internal/sources"
+	"github.com/antflydb/sample-apps/simple-file-search/internal/syncer"
 )
 
 func TestInertType(t *testing.T) {
@@ -67,5 +72,48 @@ func TestFileRejectsStaleVersionBeforeOpeningSource(t *testing.T) {
 	s.Handler().ServeHTTP(r, httptest.NewRequest("GET", "/files/documents:a.pdf?v=41", nil))
 	if r.Code != 409 {
 		t.Fatalf("stale request: %d %s", r.Code, r.Body)
+	}
+}
+
+func TestSearchColdStart(t *testing.T) {
+	const starting = `{"error":"INFERENCE_STARTING","phase":"starting_gpu","retryable":true,"retry_after_ms":30500}`
+	for _, tc := range []struct {
+		name      string
+		status    int
+		body      string
+		wantRetry bool
+	}{
+		{"confirmed startup", 503, starting, true},
+		{"overload", 429, starting, false},
+		{"capacity unavailable", 503, "no capacity", false},
+		{"not retryable", 503, `{"error":"INFERENCE_STARTING","retryable":false,"retry_after_ms":30000}`, false},
+		{"missing delay", 503, `{"error":"INFERENCE_STARTING","retryable":true}`, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != "/ai/v1/embed" {
+					t.Errorf("unexpected upstream path %s", r.URL.Path)
+				}
+				w.WriteHeader(tc.status)
+				w.Write([]byte(tc.body))
+			}))
+			defer upstream.Close()
+			s := &Server{Searcher: &search.Searcher{Antfly: antfly.New(upstream.URL, ""), Embedder: "test-embedder"}}
+			w := httptest.NewRecorder()
+			s.Handler().ServeHTTP(w, httptest.NewRequest("POST", "/api/search", strings.NewReader(`{"text":"telescope"}`)))
+			if !tc.wantRetry {
+				if w.Code != 502 || w.Header().Get("Retry-After") != "" {
+					t.Fatalf("unexpected retry: %d %v", w.Code, w.Header())
+				}
+				return
+			}
+			var result map[string]string
+			if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+				t.Fatal(err)
+			}
+			if w.Code != 503 || w.Header().Get("Retry-After") != "31" || w.Header().Get("Cache-Control") != "no-store" || result["code"] != "INFERENCE_STARTING" {
+				t.Fatalf("cold response: %d %v %s", w.Code, w.Header(), w.Body)
+			}
+		})
 	}
 }
