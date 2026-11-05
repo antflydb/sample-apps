@@ -11,7 +11,7 @@ import (
 	"github.com/antflydb/sample-apps/simple-file-search/internal/antfly"
 )
 
-// A grouped response in the shape Antfly v0.3.0-rc.9 returns.
+// A grouped response with matching file passages.
 const grouped = `{"responses":[{"hits":{"hits":[
  {"_id":"r:report.pdf","_score":0.0164,"_index_scores":{"chunks":0.77,"full_text":3.1},
   "_source":{"title":"Report.pdf","kind":"pdf","source_id":"r","source_kind":"drive","source_name":"Reports","version":"7"},

@@ -36,7 +36,7 @@ Drive  ────┘   one row per file      └─ document_units: PDF pages,
 
 ### macOS (Apple silicon)
 
-Install Antfly 0.3.0-rc.9 or newer, Go 1.26, and pnpm, then:
+Install Antfly 0.3.0-rc.10 or newer, Go 1.26, and pnpm, then:
 
 ```sh
 scripts/run-local.sh
