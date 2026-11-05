@@ -12,6 +12,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -286,6 +287,18 @@ func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	resp, err := s.Searcher.Search(ctx, req)
 	if err != nil {
+		var upstream *antfly.Error
+		if errors.As(err, &upstream) {
+			if seconds := upstream.StartupRetrySeconds(); seconds > 0 {
+				w.Header().Set("Retry-After", strconv.FormatInt(seconds, 10))
+				w.Header().Set("Cache-Control", "no-store")
+				writeJSON(w, http.StatusServiceUnavailable, map[string]string{
+					"code":  "INFERENCE_STARTING",
+					"error": "Search is warming up.",
+				})
+				return
+			}
+		}
 		slog.Error("search", "err", err)
 		writeError(w, http.StatusBadGateway, err)
 		return

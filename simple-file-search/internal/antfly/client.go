@@ -36,6 +36,22 @@ type Error struct {
 
 func (e *Error) Error() string { return fmt.Sprintf("antfly: %d: %s", e.Status, e.Body) }
 
+// StartupRetrySeconds reports the server's retry hint for a confirmed cold start.
+func (e *Error) StartupRetrySeconds() int64 {
+	if e.Status != http.StatusServiceUnavailable {
+		return 0
+	}
+	var body struct {
+		Code         string `json:"error"`
+		Retryable    bool   `json:"retryable"`
+		RetryAfterMS int64  `json:"retry_after_ms"`
+	}
+	if json.Unmarshal([]byte(e.Body), &body) != nil || body.Code != "INFERENCE_STARTING" || !body.Retryable || body.RetryAfterMS <= 0 {
+		return 0
+	}
+	return 1 + (body.RetryAfterMS-1)/1000
+}
+
 func (c *Client) do(ctx context.Context, method, path string, in, out any) error {
 	var body io.Reader
 	if in != nil {

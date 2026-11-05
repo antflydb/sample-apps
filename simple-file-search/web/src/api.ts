@@ -8,6 +8,12 @@ export class ApiError extends Error {
   }
 }
 
+export class SearchStarting extends ApiError {
+  constructor(readonly retrySeconds: number) {
+    super(503, "Search is warming up.");
+  }
+}
+
 async function call<T>(path: string, init?: RequestInit & { signal?: AbortSignal }): Promise<T> {
   const res = await fetch(path, {
     ...init,
@@ -15,11 +21,17 @@ async function call<T>(path: string, init?: RequestInit & { signal?: AbortSignal
   });
   if (!res.ok) {
     let message = `${res.status} ${res.statusText}`.trim();
+    let code: unknown;
     try {
       const body = await res.json();
+      code = body?.code;
       if (body && typeof body.error === "string" && body.error) message = body.error;
     } catch {
       // Not JSON; keep the status line.
+    }
+    if (path === "/api/search" && res.status === 503 && code === "INFERENCE_STARTING") {
+      const seconds = Number(res.headers.get("Retry-After"));
+      if (Number.isSafeInteger(seconds) && seconds > 0) throw new SearchStarting(seconds);
     }
     throw new ApiError(res.status, message);
   }

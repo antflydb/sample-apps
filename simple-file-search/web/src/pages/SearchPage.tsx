@@ -1,6 +1,6 @@
 import { Button } from "@antfly/design-system/primitives";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
-import { api } from "../api";
+import { api, SearchStarting } from "../api";
 import { ResultRow } from "../components/ResultRow";
 import { SearchBar } from "../components/SearchBar";
 import type { Attached, Like } from "../components/SearchBar";
@@ -19,10 +19,13 @@ interface Query {
 
 interface Run {
   query: Query;
-  state: "loading" | "done" | "error";
+  state: "loading" | "warming" | "done" | "error";
+  retry?: { seconds: number; nextAttempt?: number };
   data: SearchResponse | null;
   error: string;
 }
+
+const startupDelays = [30, 60, 120, 120];
 
 function urlFor(q: Query): string {
   if (q.like) return `/?like=${encodeURIComponent(q.like.id)}${q.text ? `&q=${encodeURIComponent(q.text)}` : ""}`;
@@ -58,7 +61,7 @@ export function SearchPage({ active }: { active: boolean }) {
   const runRef = useRef<Run | null>(null);
   runRef.current = run;
 
-  const execute = useCallback((q: Query, push: boolean) => {
+  const execute = useCallback((q: Query, push: boolean, attempt = 0) => {
     abort.current?.abort();
     const ctrl = new AbortController();
     abort.current = ctrl;
@@ -85,9 +88,27 @@ export function SearchPage({ active }: { active: boolean }) {
       })
       .catch((e: unknown) => {
         if (ctrl.signal.aborted) return;
+        if (e instanceof SearchStarting) {
+          const delay = startupDelays[attempt];
+          const retry = delay !== undefined && e.retrySeconds <= 120
+            ? { seconds: Math.max(delay, e.retrySeconds), nextAttempt: attempt + 1 }
+            : { seconds: e.retrySeconds };
+          setRun({ query: q, state: "warming", data: null, error: "", retry });
+          return;
+        }
         setRun({ query: q, state: "error", data: null, error: e instanceof Error ? e.message : String(e) });
       });
   }, []);
+
+  useEffect(() => {
+    const attempt = run?.retry?.nextAttempt;
+    if (!active || !run?.retry || attempt === undefined) return;
+    const signal = abort.current?.signal;
+    const timer = window.setTimeout(() => {
+      if (!signal?.aborted) execute(run.query, false, attempt);
+    }, run.retry.seconds * 1000);
+    return () => window.clearTimeout(timer);
+  }, [active, run, execute]);
 
   const load = useCallback(
     (q: Query | null) => {
@@ -343,6 +364,21 @@ function Results({
   onMoreLikeThis: (r: Result) => void;
   onRetry: () => void;
 }) {
+  if (run.state === "warming" && run.retry) {
+    const { seconds, nextAttempt } = run.retry;
+    return (
+      <div className="flex flex-wrap items-center gap-3 py-6 text-sm">
+        <p role="status">
+          {nextAttempt !== undefined
+            ? `Search is warming up. Retrying in ${seconds} seconds.`
+            : `Search is still warming up. Try again in ${seconds} seconds.`}
+        </p>
+        {nextAttempt === undefined && (
+          <Button variant="outline" size="sm" onClick={onRetry}>Try again</Button>
+        )}
+      </div>
+    );
+  }
   if (run.state === "error") {
     return (
       <div className="flex flex-wrap items-center gap-3 py-6 text-sm">
