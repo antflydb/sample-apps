@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Run Antfly and the app natively (macOS on Apple silicon uses Metal).
-# Needs: antfly >= 0.3.0-rc.9 on PATH, Go 1.26, pnpm.
+# Needs: antfly >= 0.3.0-rc.10 on PATH, Go 1.26, pnpm.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
