@@ -1,0 +1,31 @@
+{
+  "manifest_version": 2,
+  "name": "Censor Kitten",
+  "version": "0.2.0",
+  "description": "A kitten hides distressing text with local Antfly inference. Click to peek.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "censor-kitten@antfly.io",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": { "required": ["none"] }
+    }
+  },
+  "background": { "page": "background.html", "persistent": true },
+  "permissions": ["storage"],
+  "options_ui": { "page": "options.html", "open_in_tab": true },
+  "browser_action": { "default_title": "Open Censor Kitten", "default_icon": "kitten.svg" },
+  "sidebar_action": {
+    "default_title": "Censor Kitten",
+    "default_panel": "sidebar.html",
+    "default_icon": "kitten.svg",
+    "browser_style": false,
+    "open_at_install": false
+  },
+  "content_scripts": [{
+    "matches": ["http://*/*", "https://*/*"],
+    "js": ["kitten-art.js", "spoiler.js", "content.js"],
+    "css": ["spoiler.css"],
+    "run_at": "document_idle"
+  }],
+  "content_security_policy": "script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; object-src 'none'; connect-src 'self'"
+}

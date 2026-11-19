@@ -1,0 +1,37 @@
+[data-ck-position] { position: relative !important; }
+[data-ck-hidden] { display: contents !important; }
+[data-ck-hidden], [data-ck-hidden] * { visibility: hidden !important; pointer-events: none !important; }
+button[data-ck-cover] {
+  all: unset !important;
+  box-sizing: border-box !important;
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 1 !important;
+  display: grid !important;
+  place-items: center start !important;
+  overflow: hidden !important;
+  padding: 0 0.65rem !important;
+  border-radius: 4px !important;
+  isolation: isolate !important;
+  background: #151316 !important;
+  color: #ffdfad !important;
+  cursor: pointer !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  font: 14px/1.2 ui-monospace, monospace !important;
+  user-select: none !important;
+}
+button[data-ck-cover]::before { content: attr(data-ck-cover) !important; white-space: pre !important; }
+button[data-ck-cover]:focus-visible { outline: 2px solid #f9c570 !important; outline-offset: 2px !important; }
+[data-ck-kitten] {
+  all: initial !important;
+  display: block !important;
+  position: fixed !important;
+  inset: 9px auto auto 9px !important;
+  width: 66px !important;
+  height: 56px !important;
+  z-index: 2147483647 !important;
+  pointer-events: none !important;
+  filter: drop-shadow(0 2px 3px #0007) !important;
+}
+[data-ck-kitten] img { all: initial !important; display: block !important; width: 100% !important; height: 100% !important; }

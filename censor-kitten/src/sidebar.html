@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Censor Kitten</title>
+  <link rel="stylesheet" href="sidebar.css">
+  <script type="module" src="sidebar.js"></script>
+</head>
+<body>
+  <header class="masthead">
+    <div class="brand"><img src="kitten.svg" alt="" width="32" height="32"><h1>Censor Kitten</h1></div>
+    <p id="runtime">Laya multilingual · CPU WASM</p>
+  </header>
+  <main>
+    <section aria-labelledby="desk-title" class="desk">
+      <h2 id="desk-title">On this page</h2>
+      <p class="status" id="page-status" role="status">Looking for an open web page…</p>
+      <p class="worker" id="worker-status"></p>
+      <p class="current" id="candidate" hidden></p>
+      <p id="error" hidden></p>
+      <div class="controls">
+        <p id="counts"></p>
+        <button id="toggle" type="button" disabled>Pause</button>
+      </div>
+    </section>
+    <section aria-labelledby="log-title">
+      <h2 id="log-title">Decision log</h2>
+      <p id="empty">Decisions will appear here as blocks are checked.</p>
+      <ol id="activity" aria-label="Newest decision first"></ol>
+    </section>
+  </main>
+  <footer><button id="settings" type="button">Edit model prompt</button><p>Local to this browser. Reloading clears this page’s log.</p></footer>
+</body>
+</html>

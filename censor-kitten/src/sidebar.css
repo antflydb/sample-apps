@@ -1,0 +1,44 @@
+:root {
+  color-scheme: light dark;
+  --paper: light-dark(#eff5fa, #13202c);
+  --surface: light-dark(#fff, #1b2b38);
+  --ink: light-dark(#172c40, #eef5fc);
+  --muted: light-dark(#435a70, #adbfce);
+  --line: light-dark(#bccbd8, #496073);
+  --accent: light-dark(#184f70, #a2ddff);
+  font: 14px/1.45 system-ui, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+}
+body { margin: 0; overflow-wrap: anywhere; }
+.masthead { color: #fff; background: #153953; padding: 12px 14px 11px; border-bottom: 3px solid #ffb54a; }
+.brand { display: flex; align-items: center; gap: 6px; }
+h1 { font: bold 25px/1.1 Georgia, serif; margin: 0; }
+.masthead p { margin: 4px 0 0; color: #dbe9f5; font-size: 12px; }
+main { display: grid; gap: 18px; padding: 12px; }
+h2 { font-size: 13px; margin: 0 0 6px; }
+p { margin: 0; }
+.desk { padding: 10px; background: var(--surface); border-radius: 8px; border: 1px solid var(--line); }
+.status { font-weight: 650; color: var(--accent); }
+.worker, #counts, #empty, .metrics, footer { color: var(--muted); font-size: 12px; }
+.worker, .current, #error { margin-top: 5px; }
+.current { font-size: 13px; }
+#error { color: light-dark(#902a36, #ffb3b9); }
+.controls { margin-top: 8px; display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap; }
+button { font: inherit; font-weight: 600; padding: 3px 8px; color: var(--accent); background: var(--paper); border: 1px solid var(--line); border-radius: 5px; cursor: pointer; }
+button:disabled { opacity: .55; cursor: default; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+ol { padding: 0; margin: 0; list-style: none; }
+li { padding: 8px 0; border-top: 1px solid var(--line); }
+li strong { font-size: 13px; }
+li p { margin-top: 3px; }
+.metrics { font-variant-numeric: tabular-nums; }
+.original { color: var(--muted); font-size: 13px; }
+summary { width: fit-content; margin-top: 4px; color: var(--accent); cursor: pointer; font-size: 12px; }
+footer { padding: 0 12px 12px; }
+footer p { margin-top: 6px; }
+.settings main { max-width: 38rem; }
+.settings label { font-weight: 650; }
+.settings #help { margin: 5px 0 10px; color: var(--muted); }
+.settings textarea { box-sizing: border-box; width: 100%; resize: vertical; font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 5px; padding: 8px; }
+.settings textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
