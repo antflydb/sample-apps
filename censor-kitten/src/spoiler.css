@@ -21,17 +21,13 @@ button[data-ck-cover] {
   font: 14px/1.2 ui-monospace, monospace !important;
   user-select: none !important;
 }
+button[data-ck-linked] { inset: anchor(top) anchor(right) anchor(bottom) anchor(left) !important; }
 button[data-ck-cover]::before { content: attr(data-ck-cover) !important; white-space: pre !important; }
 button[data-ck-cover]:focus-visible { outline: 2px solid #f9c570 !important; outline-offset: 2px !important; }
 [data-ck-kitten] {
   all: initial !important;
   display: block !important;
   position: fixed !important;
-  inset: 9px auto auto 9px !important;
-  width: 66px !important;
-  height: 56px !important;
+  inset: 0 auto auto 0 !important;
   z-index: 2147483647 !important;
-  pointer-events: none !important;
-  filter: drop-shadow(0 2px 3px #0007) !important;
 }
-[data-ck-kitten] img { all: initial !important; display: block !important; width: 100% !important; height: 100% !important; }

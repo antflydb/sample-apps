@@ -6,7 +6,7 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "censor-kitten@antfly.io",
-      "strict_min_version": "140.0",
+      "strict_min_version": "147.0",
       "data_collection_permissions": { "required": ["none"] }
     }
   },
@@ -21,6 +21,7 @@
     "browser_style": false,
     "open_at_install": false
   },
+  "web_accessible_resources": ["sidebar.html"],
   "content_scripts": [{
     "matches": ["http://*/*", "https://*/*"],
     "js": ["kitten-art.js", "spoiler.js", "content.js"],

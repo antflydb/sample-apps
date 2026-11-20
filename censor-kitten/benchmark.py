@@ -48,6 +48,14 @@ PAGES = {
  neutral.textContent = 'The cheesemonger stocks cheddar and brie on the shelves nearest the door.';
  document.querySelector('main').append(neutral);
 }, 2500);</script>""",
+    # Excerpts from Wikipedia, Salvadoran military intervention in Haiti (CC BY-SA 4.0).
+    "/haiti": """<main>
+<p id="intervention">Since 21 October 2026, El Salvador has been conducting a military intervention in Haiti following a gang ambush on 18 October that resulted in four Salvadoran aviation technicians of the Gang Suppression Force (GSF) being kidnapped. According to Salvadoran president Nayib Bukele, the intervention's primary objective is to rescue the four technicians, while threatening to "finish" the Haitian gangs if the technicians are not rescued alive.</p>
+<p id="gang-conflict">A gang conflict has engulfed Haiti since 2020 with gangs taking control of much of the country, including most of the capital, Port-au-Prince. In 2023, the United Nations Security Council established the Multinational Security Support Mission (MSS, later reorganized as the GSF) to help the Haitian government combat gangs. El Salvador began supporting the GSF in January 2025 in non-combat roles and had at least 124 personnel in Haiti by October 2026. After Haitian gangs attacked and kidnapped the four Salvadoran technicians, Bukele announced the beginning of a military operation to rescue them.</p>
+<p id="military-support">Haitian forces and the GSF are directly supporting the Salvadoran intervention. Furthermore, the United States, Colombia, and the Dominican Republic have provided El Salvador logistical support in transporting Salvadoran personnel and equipment to Haiti. Most Salvadoran troops in Haiti are operating independently from the GSF. Some analysts have accused the intervention of being an invasion, which both Bukele and Haitian prime minister Alix Didier Fils-Aimé deny. According to a CID Gallup opinion poll, the majority of Salvadorans approve of the intervention; Haitian civilians have protested in support of the intervention, with some protesting against it under threat of gang violence.</p>
+<p id="tagline">the free encyclopedia that anyone can edit.</p>
+<p id="cheese">Cheese is a food made by coagulating milk. Aging changes its flavor and texture.</p>
+</main><footer><a href="https://en.wikipedia.org/wiki/Salvadoran_military_intervention_in_Haiti">Wikipedia, Salvadoran military intervention in Haiti</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a></footer>""",
 }
 
 
@@ -119,13 +127,14 @@ def browse(base, site, dist, firefox, seconds, enabled):
     session = "/session/" + created["sessionId"]
     root = created["capabilities"]["moz:processID"]
     try:
+        call("POST", "/window/rect", {"width": 1320, "height": 1400})
         if enabled:
             call("POST", "/moz/addon/install", {"path": str(dist), "temporary": True})
         start_cpu, start_rss = process_totals(root)
         peak_rss = start_rss
         out = {"firefox": created["capabilities"]["browserVersion"], "pages": {}}
         start = time.monotonic()
-        for name in ("cheese", "tariffs", "outbreak", "cheese"):
+        for name in ("cheese", "tariffs", "outbreak", "haiti", "cheese"):
             page_cpu, page_rss = process_totals(root)
             page_peak = page_rss
             call("POST", "/url", {"url": site + "/" + name})
@@ -142,7 +151,7 @@ def browse(base, site, dist, firefox, seconds, enabled):
                   decisions: performance.getEntriesByName('Censor Kitten: local decision')
                       .map(x => ({...x.detail, atMs: Math.round(x.startTime+x.duration)})),
                   frames: window.frameTimes,
-                  intact: [...document.querySelectorAll('#cheese,#stock,#plain,#link,#editor,#neutral,#source,#bread,#reunited')]
+                  intact: [...document.querySelectorAll('#cheese,#stock,#plain,#link,#editor,#neutral,#source,#bread,#reunited,#tagline')]
                       .map(el => el.value ?? el.textContent.trim()),
                 };"""})
             frames = data.pop("frames")
@@ -165,13 +174,13 @@ def main():
     parser.add_argument("--geckodriver", default="geckodriver")
     parser.add_argument("--firefox", default=os.environ.get("FIREFOX"))
     parser.add_argument("--driver-log", choices=["fatal", "error", "warn", "info", "debug", "trace"], default="warn")
-    parser.add_argument("--seconds", type=float, default=60, help="measurement window per page")
+    parser.add_argument("--seconds", type=float, default=100, help="measurement window per page")
     parser.add_argument("--dist", type=Path, default=Path(__file__).resolve().parent / "dist")
     parser.add_argument("--serve", action="store_true", help="serve the fixtures without starting Firefox")
     args = parser.parse_args()
     if args.serve:
         with ThreadingHTTPServer(("127.0.0.1", 8765), Handler) as site:
-            print("Open http://127.0.0.1:8765/tariffs, /outbreak, or /cheese", flush=True)
+            print("Open http://127.0.0.1:8765/tariffs, /outbreak, /haiti, or /cheese", flush=True)
             try:
                 site.serve_forever()
             except KeyboardInterrupt:
@@ -212,6 +221,9 @@ def main():
             outbreak = enabled["pages"]["outbreak"][0]
             assert outbreak["intact"] == baseline["pages"]["outbreak"][0]["intact"], outbreak
             assert set(outbreak["spoilers"]) == {"outbreak", "outbreak-detail", "drama", "missing-dog"} and outbreak["kitten"] == "alert", outbreak
+            haiti = enabled["pages"]["haiti"][0]
+            assert len(haiti["decisions"]) == 5 and haiti["intact"] == baseline["pages"]["haiti"][0]["intact"], haiti
+            assert set(haiti["spoilers"]) == {"intervention", "gang-conflict", "military-support"}, haiti
             print("PASS: distressing prose covered; neutral prose and controls stayed intact.")
         finally:
             proc.terminate()

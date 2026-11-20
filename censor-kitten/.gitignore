@@ -1,3 +1,4 @@
 /.artifacts/
 /dist/
+/dist-chromium/
 /__pycache__/

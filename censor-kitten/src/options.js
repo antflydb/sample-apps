@@ -13,7 +13,8 @@ async function persist(value) {
   if (!next) { status.textContent = "Enter a yes/no question."; return; }
   disabled(true);
   try {
-    await browser.storage.local.set({ [PROMPT_KEY]: next });
+    if (next === DEFAULT_PROMPT) await browser.storage.local.remove(PROMPT_KEY);
+    else await browser.storage.local.set({ [PROMPT_KEY]: next });
     prompt.value = next;
     status.textContent = "Saved on this device.";
   } catch (error) {
