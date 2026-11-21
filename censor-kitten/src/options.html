@@ -12,9 +12,12 @@
   <main>
     <form class="desk">
       <label for="prompt">Question for OpenDecider Nano</label>
-      <p id="help">The model asks this one yes/no question per text block. A custom question replaces the default. Reload the page after saving to check it again.</p>
+      <p id="help">The model asks this one yes/no question per text block. Reload a page after saving to check it again with the new settings.</p>
       <textarea id="prompt" aria-describedby="help" rows="4" required disabled></textarea>
-      <div class="controls"><div><button id="save" type="submit" disabled>Save prompt</button> <button id="reset" type="button" disabled>Restore default</button></div><p id="saved" role="status"></p></div>
+      <label for="cutoff">Decision threshold (%)</label>
+      <p id="cutoff-help">Scores at or above this threshold are covered. Lower values cover more text.</p>
+      <input id="cutoff" type="number" min="0" max="100" step="0.1" aria-describedby="cutoff-help" required disabled>
+      <div class="controls"><div><button id="save" type="submit" disabled>Save settings</button> <button id="reset" type="button" disabled>Restore defaults</button></div><p id="saved" role="status"></p></div>
     </form>
   </main>
 </body>

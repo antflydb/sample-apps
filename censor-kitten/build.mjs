@@ -127,7 +127,7 @@ if (chromium) {
   Object.assign(config, {
     manifest_version: 3,
     minimum_chrome_version: "131",
-    background: { service_worker: "relay.js" },
+    background: { service_worker: "relay.js", type: "module" },
     permissions: ["storage", "offscreen", "sidePanel"],
     action: { default_title },
     side_panel: { default_path: "sidebar.html" },

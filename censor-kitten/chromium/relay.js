@@ -1,3 +1,5 @@
+import { DECISION_KEYS } from "./settings.js";
+
 let creating, signalReady;
 async function ensureOffscreen() {
   if (creating) return creating;
@@ -39,7 +41,7 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   }
   if (!['classify', 'worker-status'].includes(msg?.type)) return;
   ensureOffscreen().then(async () => {
-    const stored = msg.type === 'classify' ? await chrome.storage.local.get('decisionPrompt') : undefined;
+    const stored = msg.type === 'classify' ? await chrome.storage.local.get(DECISION_KEYS) : undefined;
     return chrome.runtime.sendMessage({ to: 'offscreen', msg, tabId, stored });
   }).then(reply, error => reply({ error: `Offscreen dispatch: ${error.message}` }));
   return true;

@@ -24,6 +24,7 @@ p { margin: 0; }
 .worker, .current, #error { margin-top: 5px; }
 .current { font-size: 13px; }
 #error { color: light-dark(#902a36, #ffb3b9); }
+.panel-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .controls { margin-top: 8px; display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap; }
 button { font: inherit; font-weight: 600; padding: 3px 8px; color: var(--accent); background: var(--paper); border: 1px solid var(--line); border-radius: 5px; cursor: pointer; }
 button:disabled { opacity: .55; cursor: default; }
@@ -40,5 +41,7 @@ footer p { margin-top: 6px; }
 .settings main { max-width: 38rem; }
 .settings label { font-weight: 650; }
 .settings #help { margin: 5px 0 10px; color: var(--muted); }
-.settings textarea { box-sizing: border-box; width: 100%; resize: vertical; font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 5px; padding: 8px; }
-.settings textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.settings textarea { display: block; box-sizing: border-box; width: 100%; margin-bottom: 12px; resize: vertical; font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 5px; padding: 8px; }
+.settings input { font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 5px; padding: 4px 8px; }
+.settings #cutoff-help { margin: 5px 0 8px; color: var(--muted); }
+.settings :is(textarea, input):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

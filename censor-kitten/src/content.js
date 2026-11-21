@@ -5,15 +5,16 @@
   const MAIN = "main,[role=main]";
   const EXCLUDE = "aside,nav,footer,form,pre,code,button,label,time,textarea,select,[contenteditable]:not([contenteditable=false]),[role=button],[role=navigation],[role=doc-endnotes],[typeof~='mw:Extension/references'],[hidden],[aria-hidden=true]";
   const NON_PROSE = "img,picture,video,audio,canvas,svg,iframe,object,embed,style,script,template,noscript";
-  const MAX_TEXT = 240;
+  const MAX_TEXT = 1000;
   const MAX_ACTIVITY = 12;
   const MAX_WALKS = 24;
+  const PAUSE_KEY = "paused";
   const watched = new Set();
   const nearby = new Set();
   const seen = new WeakMap();
   const spoilers = new Map();
   const walks = new Map();
-  let active = true;
+  let active;
   let failed = false;
   let pending = false;
   let runs = 0;
@@ -36,7 +37,7 @@
 
   const badge = () => {
     updateKitten();
-    browser.runtime.sendMessage({ type: "badge", paused: !active, failed, count: spoilers.size }).catch(() => {});
+    browser.runtime.sendMessage({ type: "badge", paused: active === false, failed, count: spoilers.size }).catch(() => {});
   };
   function updateScope() {
     if (!scope?.isConnected || scope === document.body) scope = document.querySelector(MAIN) ?? document.body;
@@ -249,20 +250,17 @@
 
   document.addEventListener("visibilitychange", () => schedule());
   document.addEventListener("visibilitychange", updateKitten);
-  browser.runtime.onMessage.addListener((msg) => {
+  browser.runtime.onMessage.addListener((msg, _sender, reply) => {
     if (msg?.type === "inference-started" && pending && active && requestId === msg.requestId) {
       scanning = true;
       updateKitten();
       return;
     }
-    if (msg?.type === "page-status") return Promise.resolve(pageSnapshot());
-    if (msg?.type !== "toggle") return;
-    toggleChecking();
-    return Promise.resolve(true);
+    if (msg?.type === "page-status") reply(pageSnapshot());
   });
 
   function pageSnapshot() {
-    const phase = !active ? "paused" : failed ? "error"
+    const phase = active === false ? "paused" : failed ? "error" : active === undefined ? "starting"
       : document.hidden ? "hidden" : pending ? "checking" : waiting && nearby.size ? "waiting"
       : nearby.size ? "queued" : "watching";
     return { phase, runs, count: spoilers.size, activity, current, lastError };
@@ -273,15 +271,15 @@
       await browser.runtime.sendMessage({ type: "panel-settings" }).catch(console.error);
       return;
     }
-    if (command === "toggle") toggleChecking();
-    else if (command !== "status") return;
+    if (command !== "status") return;
     const worker = await browser.runtime.sendMessage({ type: "worker-status" }).catch(() => undefined);
     return { page: pageSnapshot(), worker };
   }
 
-  function toggleChecking() {
+  function setActive(next) {
+    if (active === next) return;
     epoch++;
-    active = !active;
+    active = next;
     current = undefined;
     requestId = undefined;
     scanning = false;
@@ -301,6 +299,14 @@
     }
     badge();
   }
-  startWatching();
-  updateKitten();
+  browser.storage.onChanged.addListener((changes, area) => {
+    if (area === "local" && changes[PAUSE_KEY]) setActive(changes[PAUSE_KEY].newValue !== true);
+  });
+  browser.storage.local.get(PAUSE_KEY).then((stored) => {
+    if (active === undefined) setActive(stored[PAUSE_KEY] !== true);
+  }).catch((error) => {
+    failed = true;
+    lastError = error.message;
+    badge();
+  });
 })();

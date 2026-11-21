@@ -1,6 +1,6 @@
 import { Inference } from "./client/inference.js";
 
-import { COVER_CUTOFF, MAX_TEXT, readPrompt } from "./settings.js";
+import { MAX_TEXT, readDecisionSettings } from "./settings.js";
 
 const MODEL = "opendecider-nano";
 const FILES = ["config.json", "tokenizer.json", "tokenizer_config.json", "model_manifest.json", "model.safetensors"];
@@ -47,7 +47,7 @@ async function classify(text, tabId, requestId, stored) {
       loadStage = "files";
       await load();
     }
-    const instructions = await readPrompt(chromium ? () => stored : undefined);
+    const { instructions, cutoff } = await readDecisionSettings(chromium ? () => stored : undefined);
     workerPhase = "running";
     started = performance.now();
     const event = { type: "inference-started", requestId };
@@ -59,7 +59,7 @@ async function classify(text, tabId, requestId, stored) {
     const answer = value.answers?.[0];
     if (answer?.type !== "predicate" || !Number.isFinite(answer.probability)) throw new Error("Missing predicate score");
     const { probability } = answer;
-    return { probability, instructions, cutoff: COVER_CUTOFF, replace: probability >= COVER_CUTOFF,
+    return { probability, instructions, cutoff, replace: probability >= cutoff,
       inputTokens: value.usage.input_tokens, inferenceMs: performance.now() - started, loadMs };
   } catch (error) {
     console.error("Censor Kitten:", error);
