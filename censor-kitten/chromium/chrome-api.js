@@ -1,1 +1,0 @@
-globalThis.browser ??= chrome;

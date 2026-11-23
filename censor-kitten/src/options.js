@@ -17,8 +17,8 @@ async function persist(instructions, threshold, restore = false) {
   if (!instructions) { status.textContent = "Enter a yes/no question."; return; }
   disabled(true);
   try {
-    if (restore) await browser.storage.local.remove(DECISION_KEYS);
-    else await browser.storage.local.set({
+    if (restore) await chrome.storage.local.remove(DECISION_KEYS);
+    else await chrome.storage.local.set({
       [PROMPT_KEY]: instructions === DEFAULT_PROMPT ? null : instructions,
       [CUTOFF_KEY]: threshold === COVER_CUTOFF ? null : threshold,
     });

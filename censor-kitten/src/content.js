@@ -37,7 +37,7 @@
 
   const badge = () => {
     updateKitten();
-    browser.runtime.sendMessage({ type: "badge", paused: active === false, failed, count: spoilers.size }).catch(() => {});
+    chrome.runtime.sendMessage({ type: "badge", paused: active === false, failed, count: spoilers.size }).catch(() => {});
   };
   function updateScope() {
     if (!scope?.isConnected || scope === document.body) scope = document.querySelector(MAIN) ?? document.body;
@@ -157,7 +157,7 @@
       const start = performance.now();
       let retry;
       try {
-        const result = await browser.runtime.sendMessage({ type: "classify", text, requestId });
+        const result = await chrome.runtime.sendMessage({ type: "classify", text, requestId });
         if (version !== epoch) return;
         if (result?.retry) {
           retry = result.retry;
@@ -250,7 +250,7 @@
 
   document.addEventListener("visibilitychange", () => schedule());
   document.addEventListener("visibilitychange", updateKitten);
-  browser.runtime.onMessage.addListener((msg, _sender, reply) => {
+  chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
     if (msg?.type === "inference-started" && pending && active && requestId === msg.requestId) {
       scanning = true;
       updateKitten();
@@ -268,11 +268,11 @@
 
   async function panelMessage(command) {
     if (command === "settings") {
-      await browser.runtime.sendMessage({ type: "panel-settings" }).catch(console.error);
+      await chrome.runtime.sendMessage({ type: "panel-settings" }).catch(console.error);
       return;
     }
     if (command !== "status") return;
-    const worker = await browser.runtime.sendMessage({ type: "worker-status" }).catch(() => undefined);
+    const worker = await chrome.runtime.sendMessage({ type: "worker-status" }).catch(() => undefined);
     return { page: pageSnapshot(), worker };
   }
 
@@ -299,10 +299,10 @@
     }
     badge();
   }
-  browser.storage.onChanged.addListener((changes, area) => {
+  chrome.storage.onChanged.addListener((changes, area) => {
     if (area === "local" && changes[PAUSE_KEY]) setActive(changes[PAUSE_KEY].newValue !== true);
   });
-  browser.storage.local.get(PAUSE_KEY).then((stored) => {
+  chrome.storage.local.get(PAUSE_KEY).then((stored) => {
     if (active === undefined) setActive(stored[PAUSE_KEY] !== true);
   }).catch((error) => {
     failed = true;

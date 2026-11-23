@@ -94,7 +94,7 @@ const kittenSpoilers = (() => {
     button.append(document.importNode(svg, true));
     root.adoptedStyleSheets = [styles];
     root.append(button);
-    const url = browser.runtime.getURL("sidebar.html");
+    const url = chrome.runtime.getURL("sidebar.html");
     const origin = url.slice(0, url.lastIndexOf("/"));
     let frame;
     button.addEventListener("click", () => {

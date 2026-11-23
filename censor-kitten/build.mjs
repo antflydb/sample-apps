@@ -4,9 +4,9 @@ import { constants, createReadStream } from "node:fs";
 import { access, cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { convertFp16 } from "./fp16.mjs";
 
 const app = dirname(fileURLToPath(import.meta.url));
-const chromium = process.argv.includes("--chromium");
 if (!process.env.ANTFLY_ROOT) throw new Error("Set ANTFLY_ROOT to the Antfly source checkout specified in README.md.");
 const repo = resolve(process.env.ANTFLY_ROOT);
 const zig = process.env.ZIG ?? "zig";
@@ -46,27 +46,29 @@ if (compiler.status !== 0 || compiler.stdout.trim() !== policy.zig.version) {
 if (!process.argv.includes("--reuse-runtime")) {
   run("pnpm", ["--filter", "@antfly/web", "build"], join(repo, "ts"));
   run(zig, ["build", "inference-wasm", "-Dmetal=false", "-j1"], join(repo, "zig"));
-  if (chromium) run(zig, ["build", "inference-wasm", "-Dmetal=false", "-Dwebgpu=true", "-j1"], join(repo, "zig"));
+  run(zig, ["build", "inference-wasm", "-Dmetal=false", "-Dwebgpu=true", "-j1"], join(repo, "zig"));
 }
 const assets = join(web, "dist/runtime-assets");
 const manifest = JSON.parse(await readFile(join(assets, "runtime-manifest.json"), "utf8"));
 const { digest, sourceFingerprint, verifyWasm } = await import(pathToFileURL(join(web, "scripts/runtime-support.mjs")));
 if (await sourceFingerprint(join(repo, "zig")) !== manifest.sourceFingerprint) throw new Error("Runtime JS does not match Antfly sources");
-const wasmName = "antfly-extraction-cpu.wasm";
-const demoWasm = process.env.CENSOR_KITTEN_DEMO_WASM;
-if (demoWasm && !process.argv.includes("--reuse-runtime")) {
-  throw new Error("CENSOR_KITTEN_DEMO_WASM requires --reuse-runtime");
+const wasmFiles = ["antfly-extraction-cpu.wasm", "antfly-extraction-webgpu.wasm"];
+// The pinned SDK uses CPU WASM for checkpoint configuration and hashing, not inference.
+const runtimes = new Map();
+for (const name of wasmFiles) {
+  const bytes = await verifyWasm(join(repo, "zig/zig-out", name), manifest.extractionAbiVersion);
+  runtimes.set(name, bytes);
+  manifest.files.push({ path: name, sha256: digest(bytes), size_bytes: bytes.length });
 }
-const wasm = await verifyWasm(demoWasm ? resolve(demoWasm) : join(repo, "zig/zig-out", wasmName), manifest.extractionAbiVersion);
-if (demoWasm && (manifest.runtimeId !== "e943518a19a308eee39c7e31ddfe29cade61a2432566e973c6e997fa958ef4cb" ||
-    digest(wasm) !== "2d05ad3292683e2d3008c5af465eec243697a392cc3470e13243af9a14d2b806")) {
-  throw new Error("Benchmark WASM or its matching Antfly JavaScript does not match the pinned demo pair.");
-}
-manifest.files.push({ path: wasmName, sha256: digest(wasm), size_bytes: wasm.length });
-const gpuName = "antfly-extraction-webgpu.wasm";
-if (chromium && demoWasm) throw new Error("Use matching upstream CPU and GPU WASM for Chromium.");
-const gpuWasm = chromium ? await verifyWasm(join(repo, "zig/zig-out", gpuName), manifest.extractionAbiVersion) : undefined;
-if (gpuWasm) manifest.files.push({ path: gpuName, sha256: digest(gpuWasm), size_bytes: gpuWasm.length });
+
+// This SDK can fall back even with backend: "webgpu". Reject before it starts
+// a CPU inference worker; fail packaging if the pinned SDK layout changes.
+const client = await readFile(join(web, "dist/inference.js"), "utf8");
+const fallback = 'await runtime.init(new URL(this.gpu ? "antfly-extraction-webgpu.wasm" : "antfly-extraction-cpu.wasm", this.assets).href, {';
+if (client.split(fallback).length !== 2) throw new Error("Cannot enforce WebGPU-only inference with this Antfly SDK");
+const gpuClient = client.replace(fallback,
+  'if (!this.gpu) throw new Error(`WebGPU is required: ${fallbackReason ?? "GPU initialization failed"}`);\n' +
+  '            await runtime.init(new URL("antfly-extraction-webgpu.wasm", this.assets).href, {');
 
 if (!(await exists(model))) {
   await mkdir(upstream, { recursive: true });
@@ -83,7 +85,7 @@ if (!(await exists(model))) {
   await rm(upstream, { recursive: true, force: true });
 }
 
-const dist = join(app, chromium ? "dist-chromium" : "dist");
+const dist = join(app, "dist-chromium");
 await rm(dist, { recursive: true, force: true });
 await cp(join(app, "src"), dist, { recursive: true });
 const kittenArt = await readFile(join(dist, "kitten.svg"), "utf8");
@@ -93,8 +95,8 @@ await cp(join(web, "dist"), join(dist, "client"), {
   recursive: true,
   filter: (path) => path === join(web, "dist") || (dirname(path) === join(web, "dist") && path.endsWith(".js")),
 });
-await writeFile(join(dist, "runtime", wasmName), wasm);
-if (gpuWasm) await writeFile(join(dist, "runtime", gpuName), gpuWasm);
+await writeFile(join(dist, "client/inference.js"), gpuClient);
+for (const [name, bytes] of runtimes) await writeFile(join(dist, "runtime", name), bytes);
 await writeFile(join(dist, "runtime/runtime-manifest.json"), JSON.stringify(manifest, null, 2) + "\n");
 await cp(join(app, "../LICENSE"), join(dist, "LICENSE"));
 await cp(join(repo, "zig/zig-out/share/licenses/antfly-inference-wasm"), join(dist, "licenses"), { recursive: true });
@@ -109,39 +111,12 @@ for (const [name, hash, dest] of [
   await writeFile(join(dist, dest), bytes);
 }
 await cp(model, join(dist, "model"), { recursive: true, mode: constants.COPYFILE_FICLONE,
-  filter: path => !chromium || path !== join(model, "model.safetensors"),
+  filter: path => path !== join(model, "model.safetensors"),
 });
 const modelManifestPath = join(dist, "model/model_manifest.json");
 const modelManifest = JSON.parse(await readFile(modelManifestPath, "utf8"));
 modelManifest.source = { repository: repoId, revision: rev };
 await writeFile(modelManifestPath, JSON.stringify(modelManifest, null, 2) + "\n");
-if (chromium) {
-  const { convertFp16 } = await import("./chromium/fp16.mjs");
-  const weight = "model.safetensors";
-  await convertFp16(join(model, weight), join(dist, "model", weight));
-  for (const file of ["relay.js", "chrome-api.js"]) await cp(join(app, "chromium", file), join(dist, file));
-  const configFile = join(dist, "manifest.json");
-  const config = JSON.parse(await readFile(configFile, "utf8"));
-  const { default_title } = config.browser_action;
-  for (const key of ["browser_specific_settings", "browser_action", "sidebar_action"]) delete config[key];
-  Object.assign(config, {
-    manifest_version: 3,
-    minimum_chrome_version: "131",
-    background: { service_worker: "relay.js", type: "module" },
-    permissions: ["storage", "offscreen", "sidePanel"],
-    action: { default_title },
-    side_panel: { default_path: "sidebar.html" },
-    cross_origin_opener_policy: { value: "same-origin" },
-    cross_origin_embedder_policy: { value: "require-corp" },
-    content_security_policy: { extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';" },
-    web_accessible_resources: [{ resources: ["sidebar.html"], matches: config.content_scripts[0].matches }],
-  });
-  config.content_scripts[0].js.unshift("chrome-api.js");
-  await writeFile(configFile, JSON.stringify(config, null, 2) + "\n");
-  for (const file of ["options.html", "sidebar.html"]) {
-    const path = join(dist, file);
-    const html = await readFile(path, "utf8");
-    await writeFile(path, html.replace('<script type="module"', '<script src="chrome-api.js"></script>\n  <script type="module"'));
-  }
-}
-console.log(`Unpacked ${chromium ? "Chromium" : "Firefox"} add-on: ${join(dist, "manifest.json")}`);
+const weight = "model.safetensors";
+await convertFp16(join(model, weight), join(dist, "model", weight));
+console.log(`Unpacked Chromium add-on: ${join(dist, "manifest.json")}`);

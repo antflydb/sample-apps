@@ -4,8 +4,6 @@ import { MAX_TEXT, readDecisionSettings } from "./settings.js";
 
 const MODEL = "opendecider-nano";
 const FILES = ["config.json", "tokenizer.json", "tokenizer_config.json", "model_manifest.json", "model.safetensors"];
-const chromium = location.protocol === "chrome-extension:";
-const api = chromium ? chrome : browser;
 const BUSY_RETRY_MS = 75;
 const IDLE_MS = 20_000;
 let inference;
@@ -19,14 +17,14 @@ const workerSnapshot = () => ({ workerPhase, workingTab, loadStage, loadMs, back
 
 async function load() {
   const start = performance.now();
-  const client = await Inference.create({ assets: api.runtime.getURL("runtime/") });
+  const client = await Inference.create({ assets: chrome.runtime.getURL("runtime/") });
   try {
     const files = new Map(await Promise.all(FILES.map(async (name) => {
-      const response = await fetch(api.runtime.getURL(`model/${name}`));
+      const response = await fetch(chrome.runtime.getURL(`model/${name}`));
       if (!response.ok) throw new Error(`Cannot read bundled ${name}: ${response.status}`);
       return [name, await response.blob()];
     })));
-    await client.loadModel(files, { backend: chromium ? "auto" : "wasm", onProgress: ({ stage }) => { loadStage = stage; } });
+    await client.loadModel(files, { backend: "webgpu", onProgress: ({ stage }) => { loadStage = stage; } });
     inference = client;
     loadMs = performance.now() - start;
   } catch (error) {
@@ -47,12 +45,11 @@ async function classify(text, tabId, requestId, stored) {
       loadStage = "files";
       await load();
     }
-    const { instructions, cutoff } = await readDecisionSettings(chromium ? () => stored : undefined);
+    const { instructions, cutoff } = await readDecisionSettings(() => stored);
     workerPhase = "running";
     started = performance.now();
     const event = { type: "inference-started", requestId };
-    void (chromium ? api.runtime.sendMessage({ to: "relay", type: event.type, tabId, event })
-      : api.tabs.sendMessage(tabId, event, { frameId: 0 })).catch(() => {});
+    void chrome.runtime.sendMessage({ to: "relay", type: event.type, tabId, event }).catch(() => {});
     const { value } = await inference.decide({
       model: MODEL, input: text, questions: [{ name: "distressing", type: "predicate", instructions }],
     });
@@ -76,43 +73,17 @@ async function classify(text, tabId, requestId, stored) {
   }
 }
 
-if (chromium) {
-  api.runtime.onMessage.addListener((request, sender, reply) => {
-    if (request?.to !== "offscreen" || sender.tab?.id >= 0) return;
-    const { msg, tabId, stored } = request;
-    if (msg?.type === "worker-status") {
-      reply({ ...workerSnapshot(), elsewhere: tabId != null && workingTab !== tabId });
-      return;
-    }
-    if (msg?.type === "classify" && typeof msg.text === "string" && msg.text.length <= MAX_TEXT &&
-        typeof msg.requestId === "string") {
-      classify(msg.text, tabId, msg.requestId, stored).then(reply, error => reply({ error: error.message }));
-      return true;
-    }
-  });
-  void api.runtime.sendMessage({ to: "relay", type: "ready" }).catch(() => {});
-}
-
-if (!chromium) browser.runtime.onMessage.addListener((msg, sender) => {
-  if (msg?.type === "worker-status" && sender.url === browser.runtime.getURL("sidebar.html")) {
-    return Promise.resolve(workerSnapshot());
-  }
-  if (sender.tab?.id === undefined || sender.frameId !== 0) return;
+chrome.runtime.onMessage.addListener((request, sender, reply) => {
+  if (request?.to !== "offscreen" || sender.tab?.id >= 0) return;
+  const { msg, tabId, stored } = request;
   if (msg?.type === "worker-status") {
-    return Promise.resolve({ ...workerSnapshot(), elsewhere: workingTab !== sender.tab.id });
+    reply({ ...workerSnapshot(), elsewhere: tabId != null && workingTab !== tabId });
+    return;
   }
-  if (msg?.type === "panel-settings") return browser.runtime.openOptionsPage();
   if (msg?.type === "classify" && typeof msg.text === "string" && msg.text.length <= MAX_TEXT &&
       typeof msg.requestId === "string") {
-    return classify(msg.text, sender.tab.id, msg.requestId);
-  }
-  if (msg?.type === "badge") {
-    const tabId = sender.tab.id;
-    const text = msg.paused ? "OFF" : msg.failed ? "!" : msg.count ? String(msg.count) : "";
-    return browser.browserAction.setBadgeText({ tabId, text });
+    classify(msg.text, tabId, msg.requestId, stored).then(reply, error => reply({ error: error.message }));
+    return true;
   }
 });
-
-if (!chromium) browser.browserAction.onClicked.addListener(() => {
-  browser.sidebarAction.toggle().catch(console.error);
-});
+void chrome.runtime.sendMessage({ to: "relay", type: "ready" }).catch(() => {});

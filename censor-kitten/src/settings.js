@@ -7,7 +7,7 @@ export const CUTOFF_KEY = "decisionCutoff";
 export const DECISION_KEYS = [PROMPT_KEY, CUTOFF_KEY];
 export const PAUSE_KEY = "paused";
 
-export async function readDecisionSettings(get = keys => browser.storage.local.get(keys)) {
+export async function readDecisionSettings(get = keys => chrome.storage.local.get(keys)) {
   const { [PROMPT_KEY]: prompt, [CUTOFF_KEY]: cutoff } = await get(DECISION_KEYS);
   return {
     instructions: typeof prompt === "string" && prompt.trim() && prompt.length <= MAX_PROMPT_LENGTH ? prompt.trim() : DEFAULT_PROMPT,
