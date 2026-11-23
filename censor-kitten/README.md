@@ -1,6 +1,6 @@
 # Censor Kitten
 
-A Chromium extension for Antfly’s browser inference API. OpenDecider Nano checks prose near the viewport and covers potentially objectionable text with clickable spoilers. The corner kitten sleeps between checks, alternates between two glances during inference, and keeps its eyes open while any spoilers remain. Reduced motion disables the pupil animation.
+Ever been browsing the Internet and wished that all distressing content could be expunged from your sight? Censor Kitten uses [Antfly](https://github.com/antflydb/antfly) and [OpenDecider Nano](https://huggingface.co/blog/manjunathshiva/opendecider-beats-laya-and-jev) to black out that text before you can see it. Everything runs locally in Chrome, and you can adjust the model's prompt and sensitivity in the settings. Inspired by the [Joo Janta 200 Super-Chromatic Peril Sentitive Sunglasses](https://hitchhikers.fandom.com/wiki/Joo_Janta_200_Super-Chromatic_Peril_Sensitive_Sunglasses), which turn opaque at the first sign of danger.
 
 ## Build and run
 
